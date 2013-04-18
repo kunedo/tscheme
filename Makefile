@@ -1,82 +1,82 @@
-# $Id: Makefile,v 1.1.1.1 2004/09/09 07:59:50 takuo Exp $
 # Tscheme: A Tiny Scheme Interpreter
-# (Course material for I425 "Topics on Software Environment")
-# Copyright (C) 1997,1998 by Takuo Watanabe <takuo@jaist.ac.jp>
-# School of Information Science, Japan Advanced Institute of
-# Science and Technology,
-# 1-1 Asahidai, Tatsunokuchi, Ishikawa 923-1292, Japan
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of GNU General Public Licence as published by
-# the Free Software Foundation; either version 1, or (at your option)
-# any lator version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
+# Copyright (c) 1995-2013 Takuo WATANABE (Tokyo Institute of Technology)
+# 
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+# 
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# Use ANSI C compiler
-CC = gcc
-CFLAGS = -Wall -ansi -pedantic
-DBGFLAGS = -g #-DDEBUG
-OPTFLAGS = -O2
-LDFLAGS=
-#DEFFLAGS = -DINIT_FILE=\"$(INIT_FILE)\"
-DEFFLAGS=
+HDRS = tscheme.h
+SRCS = main.c storage.c object.c eval.c subrs.c io.c error.c misc.c read.c
+OBJS = $(SRCS:%.c=%.o)
+TARGET = tscheme
+INITSCM = init.scm
 
-# PREFIX = /usr/lang
-# PREFIX = /usr/local/lecture/is/i425/tscheme
-PREFIX = /usr/local
+# PREFIX = /usr/local
+PREFIX = /opt
 BINDIR = $(PREFIX)/bin
-# LIBDIR = $(PREFIX)/lib/tscheme
-LIBDIR = $(PREFIX)/lib
+LIBDIR = $(PREFIX)/lib/tscheme
 
-HDRFILES = tscheme.h
-SRCFILES = main.c storage.c object.c eval.c subrs.c io.c error.c misc.c read.c
-OBJFILES = main.o storage.o object.o eval.o subrs.o io.o error.o misc.o read.o
-SCMFILES = init.scm
-TMPFILES = init1.scm # init0.scm
-NAME = tscheme
+CC = gcc -m32
+DBGFLAGS = -g #-DDEBUG
+OPTFLAGS =
+CFLAGS = -std=c99 -pedantic -Wall -Werror $(DBGFLAGS) $(OPTFLAGS)
+CPPFLAGS = -DINIT_FILE=\"$(LIBDIR)/$(INITSCM)\"
+LDFLAGS =
 
-INIT_FILE = $(LIBDIR)/init.scm
+RM = rm -f
 
 
 MKINIT_CMD = '(begin (load "simplify.scm") (sys:make-init "init.scm"))'
 MKINIT_CMD0 = '(begin (load "simplify.scm") (sys:make-init "init0.scm"))'
 MKINIT_CMD1 = '(begin (load "simplify.scm") (sys:make-init "init1.scm"))'
-SCM = /usr/local/bin/scm
 
-.c.o: $(HDRFILES)
-	$(CC) $(CFLAGS) $(DEFFLAGS) $(DBGFLAGS) $(OPTFLAGS) -c $<
+%.o: %.c $(HDRFILES)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
 
-all: $(NAME) $(SCMFILES)
+.PHONY: all clean allclean remake-init0
 
-$(NAME): $(OBJFILES)
-	$(CC) $(LDFLAGS) -o $(NAME) $(OBJFILES)
+all: $(TARGET) $(INITSCM)
 
-init.scm: init1.scm $(NAME)
-	echo $(MKINIT_CMD) | ./$(NAME) -i init1.scm
-	diff init.scm init1.scm
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-init1.scm: init0.scm $(NAME)
-	echo $(MKINIT_CMD1) | ./$(NAME) -i init0.scm
+init.scm: init0.scm $(TARGET)
+	echo $(MKINIT_CMD1) | ./$(TARGET) -i init0.scm
+	echo $(MKINIT_CMD) | ./$(TARGET) -i init1.scm
+	diff -s init.scm init1.scm
 
-init0.scm: init-src.scm simplify.scm
-	echo $(MKINIT_CMD0) | $(SCM)
+remake-init0: init-src.scm simplify.scm
+	echo $(MKINIT_CMD0) | ./$(TARGET)
 
-objects: $(OBJFILES)
-
-install: $(NAME) $(SCMFILES)
-	install -c -s $(NAME) $(BINDIR)
-	install -c $(SCMFILES) $(LIBDIR)
+install: $(TARGET) $(INITSCM)
+	install -d $(BINDIR) $(LIBDIR)
+	install -c -s $(TARGET) $(BINDIR)
+	install -c $(INITSCM) $(LIBDIR)
 
 clean:
-	rm -f $(OBJFILES) $(NAME) $(SCMFILES) $(TMPFILES)
+	$(RM) $(TARGET)
+	$(RM) $(OBJS)
+	$(RM) $(INITSCM)
+	$(RM) init1.scm
 
-realclean: 
-	rm -f $(OBJFILES) $(NAME) $(SCMFILES) $(TMPFILES) core *.core *~
+allclean: clean
+	$(RM) *~
+	$(RM) *.o
+	$(RM) core *.core
 
 # -*- EOF -*-
-
